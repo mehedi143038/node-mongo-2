@@ -1,67 +1,38 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const MongoClient = require('mongodb').MongoClient;
+require('dotenv').config();
 
 const app = express();
 
 app.use(cors());
 app.use(bodyParser.json());
 
-const dbUser = 'dbUser';
-const pass = 'WHzUdfkz2c0UAm0o';
+const dbUser = process.env.DB_USER;
+const pass = process.env.DB_PASS;
+const uri = `mongodb+srv://${dbUser}:${pass}@cluster0-64ttu.mongodb.net/test?retryWrites=true&w=majority`;
 
+let client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 const friends = ['Ashik', 'Noyon', 'Arif', 'Belal', 'Opurbo', 'Alam'];
 
-//database connnection
-const MongoClient = require('mongodb').MongoClient;
-const uri = "mongodb+srv://dbUser:WHzUdfkz2c0UAm0o@cluster0-64ttu.mongodb.net/test?retryWrites=true&w=majority";
-const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-client.connect(err => {
-  const collection = client.db("onlineStore").collection("products");
-  // perform actions on the collection object
-  collection.insertOne({
-      name:"Laptop",
-      price: 200,
-      stock: 2
-  }, (err,res)=>{
-      console.log('successfully inserted!');
-  })
-  console.log('Database connected')
-  client.close();
-});
 
 
-const data = [
-    {
-        name: 'mehedi',
-        job: 'web developer',
-        salary: 50000,
-        company:{
-            name: "programming Hero",
-            website: "www.progra.com",
-            address: "invalid address"
-        }
-    },
-    {
-        name: 'hasan',
-        job: 'web developer',
-        salary: 45000,
-        company:{
-            name: "The mehedi Hasan",
-            website: "www.mehedi.com",
-            address: "invalid address"
-        }
-    }
-]
-
-
-
-app.get('/', (req,res) => {
-    const product = {
-        name: "moneyBag",
-        price: 400
-    }
-    res.send(product);
+app.get('/products', (req,res) => {
+    client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+    client.connect(err => {
+        const collection = client.db("onlineStore").collection("products");
+        collection.find({name:'mobile'}).limit(5).toArray((err,result)=>{
+            if(err){
+                console.log(err);
+                res.status(500).send({message:err});
+            }
+            else{
+                res.send(result);
+            }
+        })
+        client.close();
+      });
 })
 
 app.get('/users/:id',(req, res)=>{
@@ -76,10 +47,26 @@ app.get('/product/mobile',(req,res)=>{
     res.send({product: "mobile", price: 10000, stock: 45})
 })
 
-app.post('/addUser',(req,res)=>{
-    const user = req.body;
-    user.id = 33;
-    res.send(user);
+app.post('/addProduct',(req,res)=>{
+    const product = req.body;
+    client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+    client.connect(err => {
+        const collection = client.db("onlineStore").collection("products");
+        collection.insertOne(product, (err,result)=>{
+            if(err){
+                console.log(err);
+                res.status(500).send({message:err});
+            }
+            else{
+                res.send(result.ops[0]);
+            }
+        })
+        client.close();
+      });
+
+    
 })
 
-app.listen(4200, () => console.log('listening to port 4200'));
+const port =process.env.PORT || 4200;
+
+app.listen(port, () => console.log('listening to port 4200'));
